@@ -1,0 +1,39 @@
+# Minimal compose for Coolify deployment (single service + persistent volume).
+# Coolify injects app envs into the generated .env for ${VAR} interpolation.
+services:
+  openwa-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '2785'
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=2785
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - DATABASE_TYPE=${DATABASE_TYPE:-sqlite}
+      - DATABASE_NAME=${DATABASE_NAME:-/app/data/openwa.sqlite}
+      - DATABASE_SYNCHRONIZE=${DATABASE_SYNCHRONIZE:-true}
+      - ENGINE_TYPE=${ENGINE_TYPE:-whatsapp-web.js}
+      - SESSION_DATA_PATH=${SESSION_DATA_PATH:-/app/data/sessions}
+      - PUPPETEER_HEADLESS=${PUPPETEER_HEADLESS:-true}
+      - PUPPETEER_ARGS=${PUPPETEER_ARGS:---no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu}
+      - STORAGE_TYPE=${STORAGE_TYPE:-local}
+      - STORAGE_LOCAL_PATH=${STORAGE_LOCAL_PATH:-/app/data/media}
+      - REDIS_ENABLED=${REDIS_ENABLED:-false}
+      - PLUGINS_ENABLED=${PLUGINS_ENABLED:-false}
+      - DASHBOARD_ENABLED=${DASHBOARD_ENABLED:-false}
+      - PROXY_ENABLED=${PROXY_ENABLED:-false}
+      - ENABLE_SWAGGER=${ENABLE_SWAGGER:-true}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - API_MASTER_KEY=${API_MASTER_KEY}
+      - WEBHOOK_TIMEOUT=${WEBHOOK_TIMEOUT:-10000}
+      - RATE_LIMIT_TTL=${RATE_LIMIT_TTL:-60}
+      - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-200}
+      - TZ=${TZ:-Europe/Rome}
+    volumes:
+      - openwa-data:/app/data
+
+volumes:
+  openwa-data:
