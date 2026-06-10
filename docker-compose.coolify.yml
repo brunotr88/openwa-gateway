@@ -34,6 +34,15 @@ services:
       - TZ=${TZ:-Europe/Rome}
     volumes:
       - openwa-data:/app/data
+    networks:
+      default: {}
+      coolify:
+        aliases:
+          - openwa-gw
 
 volumes:
   openwa-data:
+
+networks:
+  coolify:
+    external: true
