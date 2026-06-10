@@ -34,6 +34,10 @@ services:
       - TZ=${TZ:-Europe/Rome}
     volumes:
       - openwa-data:/app/data
+    # Hairpin-NAT bypass: il webhook punta a https://openwa.isipc.com; dal container
+    # risolviamo il dominio direttamente sull'host Docker (Traefik :443) senza passare dal router.
+    extra_hosts:
+      - "openwa.isipc.com:host-gateway"
     networks:
       default: {}
       coolify:
