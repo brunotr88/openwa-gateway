@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { randomUUID } from 'crypto';
 import { Client, LocalAuth, MessageMedia } from 'whatsapp-web.js';
 import * as qrcode from 'qrcode';
 import * as path from 'path';
@@ -269,12 +270,33 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     return this.pushName;
   }
 
+  /**
+   * Estrae in modo robusto l'id del messaggio inviato. whatsapp-web.js 1.34.x a
+   * volte risolve client.sendMessage() con undefined (o senza id) PUR AVENDO gia'
+   * inviato il messaggio: leggere msg.id._serialized lanciava un TypeError -> la
+   * POST /send-* rispondeva 500 e l'app a valle marcava la risposta come FAILED
+   * (escludendola poi dallo storico -> il bot risalutava a ogni turno). Se l'id
+   * reale manca, sintetizziamo un id locale univoco (l'ack matching non lo
+   * aggancera', ma il messaggio risulta correttamente inviato).
+   */
+  private resolveSentId(msg: unknown): string {
+    const m = msg as { id?: { _serialized?: string } | string } | null | undefined;
+    if (m && m.id) {
+      if (typeof m.id === 'string') return m.id;
+      if (typeof m.id._serialized === 'string') return m.id._serialized;
+    }
+    return `local_${Date.now()}_${randomUUID()}`;
+  }
+
   async sendTextMessage(chatId: string, text: string): Promise<MessageResult> {
     this.ensureReady();
     const msg = await this.client!.sendMessage(chatId, text);
     return {
-      id: msg.id._serialized,
-      timestamp: msg.timestamp,
+      id: this.resolveSentId(msg),
+      timestamp:
+        msg && typeof (msg as { timestamp?: number }).timestamp === 'number'
+          ? (msg as { timestamp: number }).timestamp
+          : Math.floor(Date.now() / 1000),
     };
   }
 
@@ -317,8 +339,11 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     });
 
     return {
-      id: msg.id._serialized,
-      timestamp: msg.timestamp,
+      id: this.resolveSentId(msg),
+      timestamp:
+        msg && typeof (msg as { timestamp?: number }).timestamp === 'number'
+          ? (msg as { timestamp: number }).timestamp
+          : Math.floor(Date.now() / 1000),
     };
   }
 
@@ -392,8 +417,11 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     });
     const msg = await this.client!.sendMessage(chatId, loc);
     return {
-      id: msg.id._serialized,
-      timestamp: msg.timestamp,
+      id: this.resolveSentId(msg),
+      timestamp:
+        msg && typeof (msg as { timestamp?: number }).timestamp === 'number'
+          ? (msg as { timestamp: number }).timestamp
+          : Math.floor(Date.now() / 1000),
     };
   }
 
@@ -412,8 +440,11 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
       parseVCards: true,
     });
     return {
-      id: msg.id._serialized,
-      timestamp: msg.timestamp,
+      id: this.resolveSentId(msg),
+      timestamp:
+        msg && typeof (msg as { timestamp?: number }).timestamp === 'number'
+          ? (msg as { timestamp: number }).timestamp
+          : Math.floor(Date.now() / 1000),
     };
   }
 
@@ -435,8 +466,11 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
       sendMediaAsSticker: true,
     });
     return {
-      id: msg.id._serialized,
-      timestamp: msg.timestamp,
+      id: this.resolveSentId(msg),
+      timestamp:
+        msg && typeof (msg as { timestamp?: number }).timestamp === 'number'
+          ? (msg as { timestamp: number }).timestamp
+          : Math.floor(Date.now() / 1000),
     };
   }
 
@@ -453,8 +487,11 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
 
     const msg = await quotedMsg.reply(text);
     return {
-      id: msg.id._serialized,
-      timestamp: msg.timestamp,
+      id: this.resolveSentId(msg),
+      timestamp:
+        msg && typeof (msg as { timestamp?: number }).timestamp === 'number'
+          ? (msg as { timestamp: number }).timestamp
+          : Math.floor(Date.now() / 1000),
     };
   }
 
