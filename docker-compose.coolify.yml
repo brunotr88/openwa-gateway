@@ -6,8 +6,26 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
+    # Nessuna porta pubblicata sull'host: il gateway è raggiungibile solo dalla
+    # rete Docker interna (openwa-web lo chiama su http://openwa-api:2785).
+    # Prima era `ports: ['2785']` → Docker lo pubblicava su 0.0.0.0:32768 in
+    # chiaro, raggiungibile da tutta la LAN (le regole iptables erano un ripiego).
+    expose:
       - '2785'
+    # Hardening runtime. Chromium gira con --no-sandbox/--disable-setuid-sandbox
+    # (vedi PUPPETEER_ARGS sotto), quindi non gli serve alcuna capability.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Limiti: il processo usa ~1.2 GiB a regime. NON scendere sotto 2G:
+    # un OOM-kill di Chromium fa cadere la sessione WhatsApp.
+    # NB: niente `pids_limit`, Coolify lo inietta già (validazione in conflitto).
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=2785
