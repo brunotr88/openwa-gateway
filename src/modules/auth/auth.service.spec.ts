@@ -337,3 +337,21 @@ describe('AuthService', () => {
     });
   });
 });
+
+// Hardening: la API key non deve piu' comparire in chiaro nei log (il banner
+// di avvio gira a ogni boot e finiva integralmente in `docker logs`).
+describe('AuthService.maskApiKey', () => {
+  it('maschera una chiave di produzione lasciando il prefisso riconoscibile', () => {
+    const key = 'owa_k1_' + 'a'.repeat(64);
+    const masked = AuthService.maskApiKey(key);
+    expect(masked).not.toContain('a'.repeat(64));
+    expect(masked.startsWith('owa_k1_aaaa')).toBe(true);
+    expect(masked).toContain('71 char');
+  });
+
+  it('lascia invariati i valori che non sono chiavi di produzione', () => {
+    expect(AuthService.maskApiKey('dev-admin-key')).toBe('dev-admin-key');
+    expect(AuthService.maskApiKey('(check dashboard for keys)')).toBe('(check dashboard for keys)');
+    expect(AuthService.maskApiKey('')).toBe('');
+  });
+});

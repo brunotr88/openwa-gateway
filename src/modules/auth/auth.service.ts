@@ -35,7 +35,10 @@ export class AuthService implements OnModuleInit {
 
       // Save raw key to file for startup script to read
       try {
-        writeFileSync(API_KEY_FILE, displayKey, 'utf-8');
+        // mode 0600: il file contiene la chiave in chiaro e vive sul volume
+        // persistente (che finisce anche nei backup). Senza mode esplicito
+        // eredita l'umask del processo, tipicamente 0644 = leggibile da tutti.
+        writeFileSync(API_KEY_FILE, displayKey, { encoding: 'utf-8', mode: 0o600 });
       } catch (err) {
         this.logger.warn('Could not save API key file', { error: String(err) });
       }
@@ -70,10 +73,28 @@ export class AuthService implements OnModuleInit {
     } else {
       this.logger.log('  🔑 API Key:');
     }
-    this.logger.log(`     ${displayKey}`);
+    // La chiave NON viene piu' stampata in chiaro: il banner gira a OGNI avvio,
+    // quindi finiva integralmente in `docker logs` e in qualunque raccoglitore
+    // di log. Il prefisso mostrato basta a capire QUALE chiave e' attiva
+    // (coincide con il keyPrefix salvato a DB); il valore completo resta in
+    // API_KEY_FILE sul volume e nella dashboard.
+    this.logger.log(`     ${AuthService.maskApiKey(displayKey)}`);
+    if (isNewKey) {
+      this.logger.log(`     (valore completo in ${API_KEY_FILE} — copialo da li' una sola volta)`);
+    }
     this.logger.log('');
     this.logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     this.logger.log('');
+  }
+
+  /**
+   * Maschera una API key per i log: prefisso riconoscibile + lunghezza.
+   * I valori che non sono chiavi (placeholder tipo '(check dashboard for keys)',
+   * o la dev key) passano invariati: non sono segreti di produzione.
+   */
+  static maskApiKey(key: string): string {
+    if (!key || !key.startsWith('owa_k1_')) return key;
+    return `${key.substring(0, 11)}****(${key.length} char)`;
   }
 
   private async seedApiKey(rawKey: string, name: string, role: ApiKeyRole): Promise<ApiKey> {
