@@ -14,8 +14,17 @@ services:
       - '2785'
     # Hardening runtime. Chromium gira con --no-sandbox/--disable-setuid-sandbox
     # (vedi PUPPETEER_ARGS sotto), quindi non gli serve alcuna capability.
+    # Utente non privilegiato (openwa, creato nel Dockerfile con uid 999/gid 995).
+    # Il Dockerfile aveva `USER openwa` commentato con la motivazione "running as
+    # root per Docker socket": motivazione falsa, questo compose NON monta
+    # /var/run/docker.sock (unico bind: openwa-data:/app/data).
+    # I file del volume sono stati portati a 999:995 una tantum sull'host.
+    user: "999:995"
     security_opt:
       - no-new-privileges:true
+    # NB: senza CAP_DAC_OVERRIDE root NON puo' piu' ignorare i permessi dei file;
+    # per questo il processo deve possedere davvero /app/data (vedi `user` sopra),
+    # altrimenti SQLite non crea i journal e va in "readonly database".
     cap_drop:
       - ALL
     # Limiti: il processo usa ~1.2 GiB a regime. NON scendere sotto 2G:
