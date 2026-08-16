@@ -28,8 +28,11 @@ RUN npm run build
 # ===== Stage 2: Production =====
 FROM node:22-slim AS production
 
-# Install Chrome/Chromium and required dependencies
-RUN apt-get update && apt-get install -y \
+# Install Chrome/Chromium and required dependencies.
+# `apt-get upgrade` NON e' superfluo: senza, i pacchetti gia' presenti
+# nell'immagine base restano alla versione congelata al momento del tag e
+# portano decine di CVE con fix gia' disponibile a monte.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     chromium \
     fonts-liberation \
     libappindicator3-1 \
@@ -56,7 +59,11 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 # Create app user for security
-RUN groupadd -r openwa && useradd -r -g openwa openwa
+# UID/GID fissati: il volume dei dati e' di 999:995 e un id assegnato
+# automaticamente potrebbe cambiare a un rebuild, rendendo i dati illeggibili.
+# `-m` crea la home: senza, HOME punta a una directory inesistente e Chromium
+# non parte ("Failed to create headless user data directory container").
+RUN groupadd -r -g 995 openwa && useradd -r -u 999 -g openwa -m -d /home/openwa openwa
 
 WORKDIR /app
 
