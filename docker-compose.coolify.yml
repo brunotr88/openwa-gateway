@@ -36,6 +36,12 @@ services:
           cpus: '2.0'
           memory: 3G
     environment:
+      # HOME scrivibile: l'utente openwa e' creato con `useradd -r` SENZA home,
+      # quindi HOME=/home/openwa non esiste e Chromium falliva con
+      # "Failed to create headless user data directory container" (browser non
+      # avviato -> sessione WhatsApp in stato failed). /app/data e' sul volume
+      # ed e' di proprieta' di 999:995.
+      - HOME=/app/data
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=2785
       - LOG_LEVEL=${LOG_LEVEL:-info}
